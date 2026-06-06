@@ -82,6 +82,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
 
   async schedule(queueName: string, cronExpression: string, data: any): Promise<void> {
     try {
+      await this.boss.createQueue(queueName);
       await this.boss.schedule(queueName, cronExpression, data);
       this.logger.log(`Scheduled queue ${queueName} with cron ${cronExpression}`);
     } catch (error) {

@@ -36,22 +36,35 @@ import { QueueModule } from '@common/queue/queue.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 5432),
-        username: configService.get<string>('DB_USERNAME', 'drms_user'),
-        password: configService.get<string>('DB_PASSWORD', 'drms_password'),
-        database: configService.get<string>('DB_DATABASE', 'drms_db'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get<boolean>('DB_SYNCHRONIZE', false),
-        logging: configService.get<boolean>('DB_LOGGING', false),
-        migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
-        migrationsRun: false,
-        ssl: configService.get<string>('APP_ENV') === 'production'
-          ? { rejectUnauthorized: false }
-          : false,
-      }),
+      useFactory: (configService: ConfigService) => {
+        const options = {
+          type: 'postgres' as const,
+          host: configService.get<string>('DB_HOST', 'localhost'),
+          port: configService.get<number>('DB_PORT', 5432),
+          username: configService.get<string>('DB_USERNAME', 'drms_user'),
+          password: configService.get<string>('DB_PASSWORD', 'drms_password'),
+          database: configService.get<string>('DB_DATABASE', 'drms_db'),
+        };
+        console.log('Resolved database options:', {
+          host: options.host,
+          port: options.port,
+          username: options.username,
+          database: options.database,
+          // Hide password but show length
+          passwordLength: options.password ? options.password.length : 0,
+        });
+        return {
+          ...options,
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: configService.get<boolean>('DB_SYNCHRONIZE', false),
+          logging: configService.get<boolean>('DB_LOGGING', false),
+          migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
+          migrationsRun: false,
+          ssl: configService.get<string>('APP_ENV') === 'production'
+            ? { rejectUnauthorized: false }
+            : false,
+        };
+      },
     }),
 
     // Event Emitter (for inter-module communication)

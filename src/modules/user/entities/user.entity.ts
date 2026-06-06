@@ -39,7 +39,7 @@ export class User {
   @Column({ name: 'last_name', length: 100 })
   lastName: string;
 
-  @Column({ name: 'avatar_url', length: 500, nullable: true })
+  @Column({ name: 'avatar_url', type: 'varchar', length: 500, nullable: true })
   avatarUrl: string | null;
 
   @Column({
@@ -56,11 +56,11 @@ export class User {
   emailVerified: boolean;
 
   @Exclude()
-  @Column({ name: 'email_verification_token', length: 255, nullable: true })
+  @Column({ name: 'email_verification_token', type: 'varchar', length: 255, nullable: true })
   emailVerificationToken: string | null;
 
   @Exclude()
-  @Column({ name: 'password_reset_token', length: 255, nullable: true })
+  @Column({ name: 'password_reset_token', type: 'varchar', length: 255, nullable: true })
   passwordResetToken: string | null;
 
   @Exclude()

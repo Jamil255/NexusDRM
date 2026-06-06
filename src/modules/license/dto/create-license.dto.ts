@@ -18,6 +18,82 @@ import { Type } from 'class-transformer';
 import { LicenseType } from '../entities/license.entity';
 
 /**
+ * DTO for updating access policy on a license.
+ */
+export class UpdateAccessPolicyDto {
+  @ApiPropertyOptional({ description: 'Allow content download' })
+  @IsOptional()
+  @IsBoolean()
+  allowDownload?: boolean;
+
+  @ApiPropertyOptional({ description: 'Allow printing' })
+  @IsOptional()
+  @IsBoolean()
+  allowPrint?: boolean;
+
+  @ApiPropertyOptional({ description: 'Allow copy/paste' })
+  @IsOptional()
+  @IsBoolean()
+  allowCopy?: boolean;
+
+  @ApiPropertyOptional({ description: 'Allow screen capture' })
+  @IsOptional()
+  @IsBoolean()
+  allowScreenCapture?: boolean;
+
+  @ApiPropertyOptional({ description: 'Enable watermark' })
+  @IsOptional()
+  @IsBoolean()
+  enableWatermark?: boolean;
+
+  @ApiPropertyOptional({ description: 'Custom watermark text' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  watermarkText?: string;
+
+  @ApiPropertyOptional({ description: 'ISO country codes allowed', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowedCountries?: string[];
+
+  @ApiPropertyOptional({ description: 'Blocked IP addresses/CIDRs', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  blockedIps?: string[];
+
+  @ApiPropertyOptional({ description: 'Max view count (null = unlimited)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  maxViews?: number;
+
+  @ApiPropertyOptional({ description: 'Max download count (null = unlimited)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  maxDownloads?: number;
+
+  @ApiPropertyOptional({ description: 'Bandwidth limit in Mbps' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  bandwidthLimitMbps?: number;
+
+  @ApiPropertyOptional({ description: 'Policy valid from' })
+  @IsOptional()
+  @IsDateString()
+  validFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Policy valid until' })
+  @IsOptional()
+  @IsDateString()
+  validUntil?: string;
+}
+
+/**
  * DTO for creating a new license.
  */
 export class CreateLicenseDto {
@@ -111,80 +187,4 @@ export class TransferLicenseDto {
   @IsString()
   @MaxLength(500)
   reason?: string;
-}
-
-/**
- * DTO for updating access policy on a license.
- */
-export class UpdateAccessPolicyDto {
-  @ApiPropertyOptional({ description: 'Allow content download' })
-  @IsOptional()
-  @IsBoolean()
-  allowDownload?: boolean;
-
-  @ApiPropertyOptional({ description: 'Allow printing' })
-  @IsOptional()
-  @IsBoolean()
-  allowPrint?: boolean;
-
-  @ApiPropertyOptional({ description: 'Allow copy/paste' })
-  @IsOptional()
-  @IsBoolean()
-  allowCopy?: boolean;
-
-  @ApiPropertyOptional({ description: 'Allow screen capture' })
-  @IsOptional()
-  @IsBoolean()
-  allowScreenCapture?: boolean;
-
-  @ApiPropertyOptional({ description: 'Enable watermark' })
-  @IsOptional()
-  @IsBoolean()
-  enableWatermark?: boolean;
-
-  @ApiPropertyOptional({ description: 'Custom watermark text' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  watermarkText?: string;
-
-  @ApiPropertyOptional({ description: 'ISO country codes allowed', type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  allowedCountries?: string[];
-
-  @ApiPropertyOptional({ description: 'Blocked IP addresses/CIDRs', type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  blockedIps?: string[];
-
-  @ApiPropertyOptional({ description: 'Max view count (null = unlimited)' })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  maxViews?: number;
-
-  @ApiPropertyOptional({ description: 'Max download count (null = unlimited)' })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  maxDownloads?: number;
-
-  @ApiPropertyOptional({ description: 'Bandwidth limit in Mbps' })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  bandwidthLimitMbps?: number;
-
-  @ApiPropertyOptional({ description: 'Policy valid from' })
-  @IsOptional()
-  @IsDateString()
-  validFrom?: string;
-
-  @ApiPropertyOptional({ description: 'Policy valid until' })
-  @IsOptional()
-  @IsDateString()
-  validUntil?: string;
 }

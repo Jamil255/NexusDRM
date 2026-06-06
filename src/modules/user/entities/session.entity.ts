@@ -24,13 +24,13 @@ export class Session {
   @Column({ name: 'refresh_token_hash', length: 255 })
   refreshTokenHash: string;
 
-  @Column({ name: 'device_fingerprint', length: 255, nullable: true })
+  @Column({ name: 'device_fingerprint', type: 'varchar', length: 255, nullable: true })
   deviceFingerprint: string | null;
 
-  @Column({ name: 'ip_address', length: 45, nullable: true })
+  @Column({ name: 'ip_address', type: 'varchar', length: 45, nullable: true })
   ipAddress: string | null;
 
-  @Column({ name: 'user_agent', length: 500, nullable: true })
+  @Column({ name: 'user_agent', type: 'varchar', length: 500, nullable: true })
   userAgent: string | null;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
