@@ -59,7 +59,7 @@ export class AuditService {
       ipAddress: params.ip,
       deviceFingerprint: params.deviceFingerprint || null,
       durationSeconds: params.durationSeconds || null,
-      bytesTransferred: params.bytesTransferred || null,
+      bytesTransferred: params.bytesTransferred ? params.bytesTransferred.toString() : null,
       countryCode: params.countryCode || null,
     });
     return this.accessRepo.save(log);

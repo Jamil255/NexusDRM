@@ -13,7 +13,7 @@ import { UserRepository } from './user.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
-import { hashPassword } from '@common/utils';
+import { hashPassword } from '@common/utils/hash.util';
 
 /**
  * Service responsible for user CRUD operations.

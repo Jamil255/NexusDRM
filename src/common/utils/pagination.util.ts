@@ -1,7 +1,7 @@
-import { SelectQueryBuilder } from 'typeorm';
+import { SelectQueryBuilder, ObjectLiteral } from 'typeorm';
 import { PaginationQueryDto, PaginatedResponseDto } from '../dto/pagination.dto';
 
-export async function paginate<T>(
+export async function paginate<T extends ObjectLiteral>(
   queryBuilder: SelectQueryBuilder<T>,
   paginationQuery: PaginationQueryDto,
 ): Promise<PaginatedResponseDto<T>> {
@@ -28,6 +28,8 @@ export async function paginate<T>(
       limit,
       total,
       totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
     },
   };
 }
@@ -38,13 +40,16 @@ export function buildPaginatedResponse<T>(
   page: number,
   limit: number,
 ): PaginatedResponseDto<T> {
+  const totalPages = Math.ceil(total / limit);
   return {
     data,
     meta: {
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
     },
   };
 }

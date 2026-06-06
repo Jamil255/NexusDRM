@@ -20,7 +20,6 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     this.boss = new PgBoss({
       connectionString,
       schema,
-      archiveFailedAfterDays: this.configService.get<number>('PGBOSS_ARCHIVE_INTERVAL_DAYS', 7),
     });
 
     this.boss.on('error', (error) => {
@@ -46,7 +45,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async publish(queueName: string, data: any, options?: PgBoss.SendOptions): Promise<string | null> {
+  async publish(queueName: string, data: any, options: PgBoss.SendOptions = {}): Promise<string | null> {
     try {
       const jobId = await this.boss.send(queueName, data, options);
       this.logger.debug(`Published job ${jobId} to queue ${queueName}`);
@@ -59,15 +58,17 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
 
   async subscribe(
     queueName: string,
-    handler: (job: PgBoss.Job<any>) => Promise<void>,
+    handler: (job: any) => Promise<void>,
     options?: PgBoss.WorkOptions,
   ): Promise<string> {
     try {
-      const workId = await this.boss.work(queueName, options || {}, async (job) => {
+      const workId = await this.boss.work(queueName, options || {}, async (job: any) => {
         try {
-          await handler(job);
+          const jobInstance = Array.isArray(job) ? job[0] : job;
+          await handler(jobInstance);
         } catch (error) {
-          this.logger.error(`Error processing job ${job.id} in queue ${queueName}`, error.stack);
+          const jobInstance = Array.isArray(job) ? job[0] : job;
+          this.logger.error(`Error processing job ${jobInstance?.id} in queue ${queueName}`, error.stack);
           throw error;
         }
       });

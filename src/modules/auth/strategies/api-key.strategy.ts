@@ -5,7 +5,7 @@ import { IncomingMessage } from 'http';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '@modules/user/entities/user.entity';
-import { hashToken } from '@common/utils';
+import { hashToken } from '@common/utils/hash.util';
 
 /**
  * Custom Passport strategy that authenticates requests using an
@@ -22,6 +22,11 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
   ) {
     super();
   }
+
+  async validate(req: any): Promise<any> {
+    return null;
+  }
+
 
   /**
    * Core authentication method called by Passport.

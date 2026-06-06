@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength, Matches } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength, Matches, IsObject } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
@@ -28,4 +28,9 @@ export class CreateOrganizationDto {
   @IsString()
   @MaxLength(50)
   plan?: string;
+
+  @ApiPropertyOptional({ description: 'Organization configuration settings' })
+  @IsOptional()
+  @IsObject()
+  settings?: Record<string, any>;
 }

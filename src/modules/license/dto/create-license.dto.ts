@@ -60,6 +60,11 @@ export class CreateLicenseDto {
   @IsOptional()
   @IsObject()
   restrictions?: Record<string, any>;
+
+  @ApiPropertyOptional({ description: 'Access Policy for the license', type: () => UpdateAccessPolicyDto })
+  @IsOptional()
+  @IsObject()
+  policy?: UpdateAccessPolicyDto;
 }
 
 /**

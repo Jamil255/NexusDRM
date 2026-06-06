@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { Role } from './entities/role.entity';
 import { Permission } from './entities/permission.entity';
 import { UserRole } from './entities/user-role.entity';
@@ -27,7 +27,7 @@ export class RbacService {
     const existing = await this.roleRepo.findOne({
       where: {
         name: dto.name,
-        organizationId: organizationId || null,
+        organizationId: organizationId ? organizationId : IsNull(),
       },
     });
 
@@ -92,7 +92,7 @@ export class RbacService {
     await this.rolePermissionRepo.save(rolePermissions);
   }
 
-  async assignRoleToUser(dto: AssignRoleDto, organizationId?: string): Promise<UserRole> {
+  async assignRoleToUser(dto: { userId: string; roleId: string }, organizationId?: string): Promise<UserRole> {
     const role = await this.roleRepo.findOne({ where: { id: dto.roleId } });
     if (!role) {
       throw new NotFoundException('Role not found');
@@ -102,7 +102,7 @@ export class RbacService {
       where: {
         userId: dto.userId,
         roleId: dto.roleId,
-        organizationId: organizationId || null,
+        organizationId: organizationId ? organizationId : IsNull(),
       },
     });
 
@@ -123,7 +123,7 @@ export class RbacService {
     await this.userRoleRepo.delete({
       userId,
       roleId,
-      organizationId: organizationId || null,
+      organizationId: organizationId ? organizationId : IsNull(),
     });
   }
 
