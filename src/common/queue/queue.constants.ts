@@ -1,0 +1,9 @@
+export const QUEUE_CONTENT_UPLOAD = 'content-upload';
+export const QUEUE_VIDEO_TRANSCODE = 'video-transcode';
+export const QUEUE_CONTENT_ENCRYPT = 'content-encrypt';
+export const QUEUE_KEY_ROTATION = 'key-rotation';
+export const QUEUE_LICENSE_EXPIRY_CHECK = 'license-expiry-check';
+export const QUEUE_EMAIL_NOTIFICATION = 'email-notification';
+export const QUEUE_AUDIT_CLEANUP = 'audit-cleanup';
+export const QUEUE_ANALYTICS_AGGREGATION = 'analytics-aggregation';
+export const QUEUE_THUMBNAIL_GENERATE = 'thumbnail-generate';

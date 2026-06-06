@@ -1,0 +1,54 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Version control
+.git
+.gitignore
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Test and coverage
+coverage
+test
+*.spec.ts
+*.e2e-spec.ts
+jest-e2e.json
+
+# IDE and editor
+.idea
+.vscode
+*.swp
+*.swo
+
+# Dashboard / frontend
+dashboard
+
+# Documentation
+*.md
+LICENSE
+docs
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Kubernetes
+k8s
+
+# CI/CD
+.github
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs

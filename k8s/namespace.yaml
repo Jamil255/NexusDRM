@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: drms
+  labels:
+    app.kubernetes.io/name: drms
+    app.kubernetes.io/part-of: drms-platform
+    app.kubernetes.io/managed-by: kubectl
