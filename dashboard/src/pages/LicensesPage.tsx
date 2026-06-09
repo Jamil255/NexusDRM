@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/client';
+import { parseApiError } from '../api/errors';
 import { DataTable } from '../components/DataTable';
 import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
@@ -146,7 +147,7 @@ export const LicensesPage: React.FC = () => {
       fetchLicenses();
     } catch (err: any) {
       console.error('Failed to generate license:', err);
-      showToast(err.response?.data?.message || 'Error generating license. Pushed as mock.', 'error');
+      showToast(parseApiError(err).message, 'error');
       
       // Simulator push
       const matchedContent = contentList.find(c => c.id === issueContentId);

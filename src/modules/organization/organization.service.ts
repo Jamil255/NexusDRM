@@ -4,7 +4,10 @@ import { Repository } from 'typeorm';
 import { Organization } from './entities/organization.entity';
 import { User } from '../user/entities/user.entity';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
+import { CreateOrgWithAdminDto } from './dto/create-org-with-admin.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { UserService } from '../user/user.service';
+import { RbacService } from '../rbac/rbac.service';
 
 @Injectable()
 export class OrganizationService {
@@ -13,6 +16,8 @@ export class OrganizationService {
     private readonly orgRepo: Repository<Organization>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly userService: UserService,
+    private readonly rbacService: RbacService,
   ) {}
 
   async create(dto: CreateOrganizationDto): Promise<Organization> {
@@ -71,5 +76,57 @@ export class OrganizationService {
     }
     user.organizationId = id;
     await this.userRepo.save(user);
+  }
+
+  /**
+   * Creates an organization and assigns an organization admin in one operation.
+   *
+   * @param dto - The organization and admin creation payload
+   * @returns Object containing created organization and admin user
+   */
+  async createWithAdmin(dto: CreateOrgWithAdminDto): Promise<{ organization: Organization; admin: User }> {
+    // Create organization
+    const slug = dto.orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    const existing = await this.orgRepo.findOne({ where: { slug } });
+    if (existing) {
+      throw new ConflictException('An organization with a similar name/slug already exists');
+    }
+
+    const org = this.orgRepo.create({
+      name: dto.orgName,
+      slug,
+      plan: dto.plan || 'free',
+      settings: dto.settings || {},
+    });
+
+    const savedOrg = await this.orgRepo.save(org);
+
+    // Create admin user for the organization
+    const adminUser = await this.userService.createOrgAdmin(
+      {
+        email: dto.adminEmail,
+        password: dto.adminPassword,
+        firstName: dto.adminFirstName,
+        lastName: dto.adminLastName,
+      },
+      savedOrg.id,
+    );
+
+    // Assign org_admin role to the user
+    const orgAdminRole = await this.rbacService.getRoleByName('org_admin');
+    if (orgAdminRole) {
+      await this.rbacService.assignRoleToUser(
+        {
+          userId: adminUser.id,
+          roleId: orgAdminRole.id,
+        },
+        savedOrg.id,
+      );
+    }
+
+    return {
+      organization: savedOrg,
+      admin: adminUser,
+    };
   }
 }

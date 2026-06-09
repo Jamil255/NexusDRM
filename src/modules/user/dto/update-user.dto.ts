@@ -21,4 +21,9 @@ export class UpdateUserDto {
   @IsOptional()
   @IsUrl({}, { message: 'Avatar URL must be a valid URL' })
   avatarUrl?: string;
+
+  @ApiPropertyOptional({ example: 'b1a2c3d4-e5f6-7890-abcd-ef1234567890' })
+  @IsOptional()
+  @IsString()
+  roleId?: string;
 }

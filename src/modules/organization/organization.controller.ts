@@ -12,6 +12,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
 import { OrganizationService } from './organization.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
+import { CreateOrgWithAdminDto } from './dto/create-org-with-admin.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { RbacGuard } from '@common/guards/rbac.guard';
@@ -29,6 +30,13 @@ export class OrganizationController {
   @ApiOperation({ summary: 'Create a new organization/tenant' })
   async create(@Body() dto: CreateOrganizationDto) {
     return this.orgService.create(dto);
+  }
+
+  @Post('with-admin')
+  @Permissions('organization:manage')
+  @ApiOperation({ summary: 'Create a new organization with admin user' })
+  async createWithAdmin(@Body() dto: CreateOrgWithAdminDto) {
+    return this.orgService.createWithAdmin(dto);
   }
 
   @Get()

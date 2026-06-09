@@ -1,145 +1,163 @@
-# Enterprise Digital Rights Management System (DRMS)
+# NexusDRM — Enterprise Digital Rights Management System
 
-An enterprise-grade, production-ready Digital Rights Management System (DRMS) for videos, audio, documents, and text content. Designed as a highly scalable, microservice-ready Modular Monolith in **NestJS**.
+NexusDRM is an enterprise-grade, production-ready Digital Rights Management System (DRMS) for secure video, audio, document, and text delivery. Built as a highly scalable **NestJS** backend modular monolith coupled with a stunning **Vite + React + Tailwind CSS v3** dashboard console using a premium emerald green glassmorphism design system.
 
 ---
 
 ## 🚀 Technology Stack
 
+### Backend Monolith
 - **Framework**: NestJS (TypeScript)
 - **Database**: PostgreSQL 16
 - **ORM**: TypeORM
-- **Cache & Queue**: PgBoss (Postgres-native transactional queue)
-- **Object Storage**: AWS S3 / MinIO
-- **Authentication**: Passport JWT + Rotation Refresh Tokens
+- **Cache & Queue**: PgBoss (Postgres-native transactional job queue)
+- **Object Storage**: Cloudinary (Media Vault, transcoders, and page image conversions)
+- **Authentication**: Passport JWT + Rotate Refresh Token flow
 - **API Documentation**: Swagger / OpenAPI
-- **Frontend Dashboard**: Vanilla HTML5, CSS3 (Glassmorphism), JavaScript (Chart.js integrations)
+
+### Frontend Console
+- **Framework**: Vite + React (TypeScript) + React Router v6
+- **Styling**: Tailwind CSS v3 + CSS custom glassmorphism layers
+- **Icons**: Lucide React
+- **HTTP Client**: Axios with automatic JWT attach and token auto-refresh interceptors
 
 ---
 
-## 🔒 Key Security & DRM Features
+## 🔒 Key Security & Anti-Piracy Features
 
-1. **Envelope Content Encryption**: AES-256-GCM symmetric encryption for files at rest. Dynamic keys are wrapped/encrypted using a Master Encryption Key before being stored in the database.
-2. **Access Control Policies**: Strict device caps, concurrent stream bounds, geolocation/IP white-listing, and validity schedules.
-3. **Signed Streaming Cookies & URLs**: HMAC-SHA256 URL signatures with time-to-live restrictions.
-4. **Dynamic Watermarking**: Overlaying timestamp & user identification (email hashes) onto streaming payloads (video drawing filters, canvas wrappers, and zero-width character steganography in text files).
-5. **Auditing**: Full audit trials of content accesses and administrator modifications.
-6. **Concurrent Session Control**: Session limits enforced dynamically on authentication tokens.
+1. **Secure Document Page Transforms**: Documents are uploaded under the isolated `docs/` folder prefix as `image` resource types on Cloudinary. When previewed, the backend generates a 10-page array of temporal, cryptographically pre-signed authenticated image URLs, preventing client-side PDF downloads or direct URL sniffing.
+2. **Secure Video/Audio Previews**: Embedded players load signed temporal streams natively. Viewports automatically blur and pause if the window loses focus (such as opening DevTools, switching tabs, or triggering screenshot utilities).
+3. **Adaptive Bitrate Multi-DRM (Production)**: Supports Google Widevine, Apple FairPlay, and Microsoft PlayReady integrations. Decryption keys are verified inside the browser's hardware CDM (Content Decryption Module), forcing OS-level capture engines (e.g. OBS, Snipping Tool, Zoom screen share) to display only a solid black box.
+4. **Dynamic Identity Watermarking**: Displays a semi-transparent, slanted watermark showing the logged-in user's email address and IP address across documents, videos, and audio layouts to trace physical camera leaks.
+5. **Session Leasing Limits**: Enforces session limits, token rotation, and lease tracking (TTL and IP locking) to prevent account sharing.
+6. **Administrator Bypass**: Content creators and administrators with bypass privileges (`admin:access` or `content:write`) can preview media assets without requiring manual license key registry entries.
 
 ---
 
 ## 📂 Project Structure
 
 ```
-src/
-├── common/             # Shared entities, enums, DTOs, guards, interceptors, middleware, utils, and queue module
-├── database/           # Seeds (admin-user, roles, permissions) and migrations
-├── health/             # Readiness and liveness checks (Terminus)
-├── modules/            # Bounded domains
-│   ├── admin/          # Admin telemetries and user activation/suspension APIs
-│   ├── audit/          # Operations and file access audit trails
-│   ├── auth/           # Login, registration, token rotation, forgot passwords
-│   ├── content/        # Metadata catalog, versioning, upload processing
-│   ├── drm/            # File encryption and signed URL generators
-│   ├── license/        # Key issuance, device activations, policy checks
-│   ├── notification/   # Template compilers and email queue dispatchers
-│   ├── organization/   # Multi-tenant tenant setups
-│   ├── rbac/           # Role permission hierarchy mappings
-│   ├── streaming/      # Route controllers for video, audio, document, and text
-│   └── subscription/   # Quota monitoring & plan billing
-├── main.ts             # Bootstrap entrypoint
-dashboard/              # Vanilla dark-mode glassmorphism admin dashboard
-k8s/                    # Kubernetes manifests (deployments, ingress, hpa, statefulset)
-Dockerfile              # Multi-stage production container build
-docker-compose.yml      # Local Postgres, MinIO, and app configuration
+DRMS/
+├── src/                         # NestJS Backend Code
+│   ├── common/                  # Shared filters, interceptors, queues, and utilities
+│   ├── database/                # Migrations, seed scripts, and configuration
+│   ├── modules/                 # Modular Domain Monolith
+│   │   ├── auth/                # JWT auth, refresh token rotation, login
+│   │   ├── user/                # Profile management and CRUD
+│   │   ├── rbac/                # Permissions, roles, and hierarchy controls
+│   │   ├── organization/        # Multi-tenant organization layouts
+│   │   ├── content/             # Asset uploads, processors, and versions
+│   │   ├── drm/                 # AES-256 encryptions, signed URL generators
+│   │   ├── license/             # License issuers, constraints, device count locks
+│   │   ├── streaming/           # Video, audio, document, and text stream gateways
+│   │   └── admin/               # System metrics, user activation/suspension
+│   └── main.ts                  # Bootstrap NestJS gateway
+│
+├── dashboard/                   # React Frontend Dashboard
+│   ├── src/
+│   │   ├── api/client.ts        # Axios client with JWT refresh interceptors
+│   │   ├── context/AuthContext.ts# Authenticated user session state manager
+│   │   ├── components/          # Reusable glassmorphic UI components
+│   │   └── pages/               # Screen page layouts (Dashboard, Landing, Vault, etc.)
+│   ├── tailwind.config.js       # Emerald/green custom dark theme configuration
+│   └── vercel.json              # Vercel SPA rewrite routing rules
+│
+├── test_new_document.js         # E2E document upload and signed page conversion test
+├── Dockerfile                   # Multi-stage Docker production configuration
+├── docker-compose.yml           # Database and infrastructure setup
+└── README.md                    # Main documentation file
 ```
 
 ---
 
 ## 🛠️ Getting Started
 
-### 1. Prerequisites
-- Node.js (v20+)
-- Docker and Docker Compose
-
-### 2. Quickstart with Docker Compose (Recommended)
-You can run the entire environment (NestJS app, PostgreSQL, and MinIO storage) in containers:
-
+### 1. Host Setup & Infrastructure
+Start the PostgreSQL database service in the background:
 ```bash
-# Start all containers
-docker-compose up --build
-```
-This automatically boots:
-- **NestJS DRMS Server** on `http://localhost:3000`
-- **PostgreSQL Database** on port `5432`
-- **MinIO Storage Console** on `http://localhost:9001` (login: `minioadmin` / `minioadmin`)
-
----
-
-### 3. Local Development Mode
-
-If you prefer running the NestJS server on your host machine:
-
-#### Step A: Run Infrastructure Services
-Start Postgres and MinIO in the background:
-```bash
-docker-compose up postgres minio minio-init -d
+docker-compose up postgres -d
 ```
 
-#### Step B: Install Dependencies
+### 2. Backend Installation & Start
+From the project root:
+
 ```bash
+# Install NPM dependencies
 npm install
-```
 
-#### Step C: Seed Database
-Populate permissions, hierarchy roles, and default Super Admin profile:
-```bash
+# Run database seeds (admin users, roles, and permissions)
 npm run seed
-```
 
-#### Step D: Start Server
-```bash
+# Build the application
+npm run build
+
+# Start the NestJS backend in development watch mode
 npm run start:dev
 ```
+- **Backend API Gateway**: `http://localhost:3000`
+- **Swagger Documentation API docs**: `http://localhost:3000/api/docs`
+- **Health Verification Probe**: `http://localhost:3000/api/v1/health`
 
-- **Swagger Documentation**: `http://localhost:3000/api/docs`
-- **Health Probes**: `http://localhost:3000/api/v1/health`
-
----
-
-## 📊 Admin Dashboard UI
-
-A complete, beautiful SaaS admin dashboard is available. 
-
-Simply open the file in your browser:
-📂 [dashboard/index.html](file:///c:/Users/jamil/Desktop/DRMS/dashboard/index.html)
-
-### Included Screens:
-1. **Analytics Dashboard**: User growth line graphs, content distributions, recent logs feed.
-2. **User Management**: Suspensions, role filters, search.
-3. **Content Catalog**: Resource previews, metadata view, catalog grid/list.
-4. **License Manager**: Device binding counts, key revocations.
-5. **Audit Trail**: Security events and access timestamps.
-6. **Revenue Overview**: MRR trend line graphs and plan aggregations.
-7. **System Health**: Circular gauges monitoring Node memory, CPU load, database pool limits.
-
----
-
-## 🧪 Testing
+### 3. Frontend Installation & Start
+Navigate to the `dashboard` directory:
 
 ```bash
-# Run Unit Tests
-npm run test
+cd dashboard
 
-# Run End-to-End API Tests
-npm run test:e2e
+# Install frontend dependencies
+npm install
+
+# Start the Vite React development server
+npm run dev
+```
+- **Frontend Dashboard Console**: `http://localhost:5173`
+
+---
+
+## 🧪 E2E Verification Testing
+
+A verification script [`test_new_document.js`](file:///c:/Users/jamil/Desktop/DRMS/test_new_document.js) is provided in the root directory to upload a valid minimal PDF buffer, generate signed page URLs, and verify Cloudinary access statuses:
+
+```bash
+node test_new_document.js
+```
+
+**Expected Success Output:**
+```
+Logging in as super admin...
+Login successful.
+Uploading new PDF document...
+Uploaded document successfully. ID: bfc71410-eebd-4730-b0d3-f0c3c53c3528
+Waiting for background processing (thumbnail generation)...
+Fetching secure document preview config...
+Verifying Cloudinary URL request status...
+Cloudinary request status: 200 (SUCCESS)
+SUCCESS: Document pages load perfectly!
 ```
 
 ---
 
-## 🔑 Default Seed Account
-
-After running the database seeding script, use these credentials to log in:
+## 🔑 Default Credentials
+Use these pre-seeded credentials to log in during local development:
 - **Email**: `admin@drms.com`
 - **Password**: `Admin@123456`
-- **Assigned Role**: `super_admin`
+- **Role**: `super_admin`
+
+---
+
+## 🚀 Production Deployment Guide
+
+### Frontend (Deploying to Vercel)
+1. Push the repository to GitHub.
+2. In [Vercel Dashboard](https://vercel.com/), select **"Add New Project"** and import the repository.
+3. Configure settings:
+   - **Root Directory**: `dashboard` (Vite preset is auto-detected)
+   - **Environment Variables**: Add `VITE_API_BASE_URL` pointing to the public address of your deployed NestJS backend API gateway (e.g. `https://api.nexusdrm.com/api/v1`).
+4. Click **Deploy**. Vercel uses [`vercel.json`](file:///c:/Users/jamil/Desktop/DRMS/dashboard/vercel.json) rewrite configurations to manage routing.
+
+### Backend (Deploying to Railway/Render/VPS)
+1. Provision a production PostgreSQL instance.
+2. Host the NestJS project root directory on a persistent Node.js deployment host (like Railway or Render).
+3. Bind your database connection URL to `.env` variables (`DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`).
+4. Add environment variables for Cloudinary configuration (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`).
+5. Set start command to `node dist/main.js` after compilation.

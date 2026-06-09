@@ -40,4 +40,9 @@ export class CreateUserDto {
   @IsOptional()
   @IsUUID()
   organizationId?: string;
+
+  @ApiPropertyOptional({ description: 'Role UUID to assign the user' })
+  @IsOptional()
+  @IsUUID()
+  roleId?: string;
 }

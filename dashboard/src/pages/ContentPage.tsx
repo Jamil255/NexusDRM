@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../api/client';
+import { parseApiError } from '../api/errors';
 import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
 import { Search, Film, Music, FileText, Upload, Plus, Trash2, Eye, Play, Lock, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, EyeOff } from 'lucide-react';
@@ -148,7 +149,7 @@ export const ContentPage: React.FC = () => {
       fetchContent();
     } catch (err: any) {
       console.error('Upload error:', err);
-      showToast(err.response?.data?.message || 'Error uploading file. Using simulator mode.', 'error');
+      showToast(parseApiError(err).message, 'error');
       
       // Simulator Upload Add
       const newSimItem: ContentItem = {

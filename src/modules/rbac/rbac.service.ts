@@ -119,6 +119,10 @@ export class RbacService {
     return this.userRoleRepo.save(userRole);
   }
 
+  async getUserRoles(userId: string): Promise<UserRole[]> {
+    return this.userRoleRepo.find({ where: { userId } });
+  }
+
   async removeRoleFromUser(userId: string, roleId: string, organizationId?: string): Promise<void> {
     await this.userRoleRepo.delete({
       userId,
@@ -213,5 +217,22 @@ export class RbacService {
         }
       }
     }
+  }
+
+  /**
+   * Gets a role by its name.
+   * Searches for system roles first, then organization-specific roles.
+   *
+   * @param name - The role name to find
+   * @param organizationId - Optional organization ID to scope the search
+   * @returns The role entity or null if not found
+   */
+  async getRoleByName(name: string, organizationId?: string): Promise<Role | null> {
+    return this.roleRepo.findOne({
+      where: {
+        name,
+        organizationId: organizationId ? organizationId : IsNull(),
+      },
+    });
   }
 }

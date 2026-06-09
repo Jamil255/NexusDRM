@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/client';
+import { parseApiError } from '../api/errors';
 import { DataTable } from '../components/DataTable';
 import { Badge } from '../components/Badge';
-import { UserCheck, UserX, Download, Search, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { CreateUserModal, type CreateUserFormData } from "../components/CreateUserModal";
+import { EditUserModal, type EditableUser, type EditUserPayload } from "../components/EditUserModal";
+import { UserCheck, UserX, Download, Search, RefreshCw, AlertTriangle, ShieldCheck, Plus, Pencil } from 'lucide-react';
 
 interface UserRecord {
   id: string;
@@ -24,10 +27,66 @@ export const UsersPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [createUserModalOpen, setCreateUserModalOpen] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [editUserModalOpen, setEditUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<EditableUser | null>(null);
+  const [updatingUser, setUpdatingUser] = useState(false);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleCreateUser = async (formData: CreateUserFormData) => {
+    setCreatingUser(true);
+    try {
+      await apiClient.post('/users', {
+        email: formData.email,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        password: formData.password,
+        roleId: formData.roleId || undefined,
+      });
+
+      showToast('User created successfully!', 'success');
+      fetchUsers();
+    } catch (err: any) {
+      const parsed = parseApiError(err);
+      throw new Error(parsed.message);
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const handleEditUser = async (userId: string, payload: EditUserPayload) => {
+    setUpdatingUser(true);
+    try {
+      await apiClient.put(`/users/${userId}`, {
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        roleId: payload.roleId || undefined,
+      });
+      showToast('User updated successfully!', 'success');
+      fetchUsers();
+    } catch (err: any) {
+      const parsed = parseApiError(err);
+      throw new Error(parsed.message);
+    } finally {
+      setUpdatingUser(false);
+    }
+  };
+
+  const openEditModal = (user: UserRecord) => {
+    setEditingUser({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      status: user.status,
+    });
+    setEditUserModalOpen(true);
   };
 
   const fetchUsers = async () => {
@@ -85,7 +144,7 @@ export const UsersPage: React.FC = () => {
       );
     } catch (err: any) {
       console.error('Failed to toggle user status:', err);
-      showToast(err.response?.data?.message || 'Unauthorized action. Admin privileges required.', 'error');
+      showToast(parseApiError(err).message, 'error');
     } finally {
       setActionLoadingId(null);
     }
@@ -102,7 +161,7 @@ export const UsersPage: React.FC = () => {
       );
     } catch (err: any) {
       console.error('Failed to deactivate user:', err);
-      showToast(err.response?.data?.message || 'Error deactivating user.', 'error');
+      showToast(parseApiError(err).message, 'error');
     } finally {
       setActionLoadingId(null);
     }
@@ -184,7 +243,18 @@ export const UsersPage: React.FC = () => {
       render: (row: UserRecord) => {
         const isActioning = actionLoadingId === row.id;
         return (
-          <div className="flex items-center space-x-2.5">
+          <div className="flex items-center space-x-2">
+            {/* Edit */}
+            <button
+              onClick={() => openEditModal(row)}
+              disabled={isActioning}
+              title="Edit User"
+              className="p-1.5 rounded-lg bg-dark-850 hover:bg-amber-500/15 border border-dark-800 hover:border-amber-500/30 text-dark-400 hover:text-amber-400 transition-all cursor-pointer disabled:opacity-40"
+            >
+              <Pencil size={14} />
+            </button>
+
+            {/* Suspend / Activate */}
             {row.status === 'ACTIVE' ? (
               <button
                 onClick={() => toggleUserStatus(row.id, row.status)}
@@ -213,6 +283,7 @@ export const UsersPage: React.FC = () => {
               </button>
             )}
 
+            {/* Deactivate */}
             <button
               onClick={() => deactivateUser(row.id)}
               disabled={isActioning || row.status === 'DEACTIVATED'}
@@ -250,6 +321,13 @@ export const UsersPage: React.FC = () => {
           <p className="text-dark-400 text-sm font-medium">Activate, suspend, or invalidate team access nodes.</p>
         </div>
         <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setCreateUserModalOpen(true)}
+            className="px-4 py-2.5 rounded-lg text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all flex items-center space-x-2 cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>Create User</span>
+          </button>
           <button
             onClick={fetchUsers}
             className="p-2.5 rounded-lg bg-dark-900 border border-dark-800 hover:border-brand-500/30 text-dark-300 hover:text-dark-100 transition-all cursor-pointer"
@@ -296,6 +374,23 @@ export const UsersPage: React.FC = () => {
         limit={limit}
         onPageChange={setPage}
         emptyMessage="No matching users found in organization directory"
+      />
+
+      {/* Create User Modal */}
+      <CreateUserModal
+        isOpen={createUserModalOpen}
+        onClose={() => setCreateUserModalOpen(false)}
+        onSubmit={handleCreateUser}
+        loading={creatingUser}
+      />
+
+      {/* Edit User Modal */}
+      <EditUserModal
+        isOpen={editUserModalOpen}
+        onClose={() => { setEditUserModalOpen(false); setEditingUser(null); }}
+        onSubmit={handleEditUser}
+        user={editingUser}
+        loading={updatingUser}
       />
     </div>
   );

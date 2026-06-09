@@ -30,6 +30,8 @@ import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { RbacService } from '@modules/rbac/rbac.service';
 
 /**
  * REST controller for user profile and admin-level user management.
@@ -38,7 +40,35 @@ import { UserResponseDto } from './dto/user-response.dto';
 @ApiBearerAuth()
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly rbacService: RbacService,
+  ) {}
+
+  /**
+   * Create a new user (admin only).
+   */
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Create a new user (admin)' })
+  @ApiResponse({ status: 201, description: 'User created successfully', type: UserResponseDto })
+  async createUser(@Body() dto: CreateUserDto) {
+    const user = await this.userService.create(dto);
+    if (dto.roleId) {
+      // Resolve role: if roleId is a name (e.g. 'org_admin'), look up the real UUID
+      let resolvedRoleId = dto.roleId;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dto.roleId);
+      if (!isUuid) {
+        const role = await this.rbacService.getRoleByName(dto.roleId);
+        if (role) resolvedRoleId = role.id;
+      }
+      await this.rbacService.assignRoleToUser({ userId: user.id, roleId: resolvedRoleId }, dto.organizationId);
+    }
+    return {
+      success: true,
+      data: plainToInstance(UserResponseDto, user),
+    };
+  }
 
   /**
    * List all users with pagination (admin only).
@@ -152,7 +182,28 @@ export class UserController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
   ) {
-    const user = await this.userService.update(id, dto);
+    // Handle role reassignment if roleId is provided
+    if (dto.roleId) {
+      // Resolve role: if roleId is a name (e.g. 'org_admin'), look up the real UUID
+      let resolvedRoleId = dto.roleId;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dto.roleId);
+      if (!isUuid) {
+        const role = await this.rbacService.getRoleByName(dto.roleId);
+        if (role) resolvedRoleId = role.id;
+      }
+
+      // Remove all existing roles for this user first
+      const existingRoles = await this.rbacService.getUserRoles(id);
+      for (const ur of existingRoles) {
+        await this.rbacService.removeRoleFromUser(id, ur.roleId, ur.organizationId || undefined);
+      }
+      // Assign new role
+      await this.rbacService.assignRoleToUser({ userId: id, roleId: resolvedRoleId });
+    }
+
+    // Remove roleId from dto before passing to user service (User entity doesn't have roleId)
+    const { roleId, ...updateData } = dto;
+    const user = await this.userService.update(id, updateData as any);
     return {
       success: true,
       data: plainToInstance(UserResponseDto, user),

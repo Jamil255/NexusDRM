@@ -167,4 +167,36 @@ export class UserService {
     user.avatarUrl = avatarUrl;
     return this.userRepository.base.save(user);
   }
+
+  /**
+   * Creates an organization admin user.
+   * Sets the user status to ACTIVE and verifies email automatically.
+   *
+   * @param dto - The creation payload
+   * @param organizationId - The organization to assign the admin to
+   * @returns The newly created admin user
+   * @throws ConflictException if the email is already registered
+   */
+  async createOrgAdmin(dto: CreateUserDto, organizationId: string): Promise<User> {
+    const existing = await this.findByEmail(dto.email);
+    if (existing) {
+      throw new ConflictException('A user with this email already exists');
+    }
+
+    const hashedPw = await hashPassword(dto.password);
+
+    const user = this.userRepository.base.create({
+      email: dto.email.toLowerCase().trim(),
+      passwordHash: hashedPw,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      organizationId: organizationId,
+      status: 'ACTIVE',
+      emailVerified: true,
+    });
+
+    const saved = await this.userRepository.base.save(user);
+    this.logger.log(`Organization admin created: ${saved.id} (${saved.email}) for org: ${organizationId}`);
+    return saved;
+  }
 }
