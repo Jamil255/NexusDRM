@@ -15,11 +15,8 @@ services:
       - .env
     environment:
       - DB_HOST=postgres
-      - S3_ENDPOINT=http://minio:9000
     depends_on:
       postgres:
-        condition: service_healthy
-      minio:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/v1/health']
@@ -56,62 +53,11 @@ services:
     networks:
       - drms-network
 
-  # ==========================================================================
-  # MinIO Object Storage (S3-compatible)
-  # ==========================================================================
-  minio:
-    image: minio/minio:latest
-    container_name: drms-minio
-    ports:
-      - '9000:9000'
-      - '9001:9001'
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ['CMD', 'mc', 'ready', 'local']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    restart: unless-stopped
-    networks:
-      - drms-network
-
-  # ==========================================================================
-  # MinIO Bucket Initialization
-  # ==========================================================================
-  minio-init:
-    image: minio/mc:latest
-    container_name: drms-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set drms http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
-      mc mb --ignore-existing drms/drms-raw-content;
-      mc mb --ignore-existing drms/drms-encrypted-content;
-      mc mb --ignore-existing drms/drms-thumbnails;
-      echo 'Buckets created successfully.';
-      exit 0;
-      "
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
-    networks:
-      - drms-network
-
 # ==============================================================================
 # Volumes
 # ==============================================================================
 volumes:
   postgres_data:
-    driver: local
-  minio_data:
     driver: local
 
 # ==============================================================================

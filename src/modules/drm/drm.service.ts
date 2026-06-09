@@ -13,8 +13,8 @@ export class DrmService {
     private readonly keyManagementService: KeyManagementService,
   ) {}
 
-  async encryptContent(contentId: string, s3Key: string): Promise<string> {
-    return this.encryptionService.encryptContentFile(contentId, s3Key);
+  async encryptContent(contentId: string, publicId: string): Promise<string> {
+    return this.encryptionService.encryptContentFile(contentId, publicId);
   }
 
   async generateAccessSession(

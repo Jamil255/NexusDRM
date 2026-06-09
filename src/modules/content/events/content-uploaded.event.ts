@@ -1,5 +1,5 @@
 /**
- * Event emitted when new content has been uploaded to S3 and
+ * Event emitted when new content has been uploaded to Cloudinary and
  * a database record has been created in PROCESSING state.
  */
 export class ContentUploadedEvent {

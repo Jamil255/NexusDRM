@@ -23,6 +23,7 @@ import { SubscriptionModule } from '@modules/subscription/subscription.module';
 import { AdminModule } from '@modules/admin/admin.module';
 import { HealthModule } from './health/health.module';
 import { QueueModule } from '@common/queue/queue.module';
+import { CloudinaryModule } from '@common/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -81,7 +82,11 @@ import { QueueModule } from '@common/queue/queue.module';
     // Queue (PgBoss)
     QueueModule,
 
+    // Cloudinary Storage
+    CloudinaryModule,
+
     // Core Modules
+
     AuthModule,
     UserModule,
     RbacModule,

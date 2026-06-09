@@ -35,7 +35,7 @@ export enum ContentType {
 
 /**
  * Core entity representing a piece of digital content managed by the DRMS.
- * Tracks S3 storage location, encryption state, versioning, and DRM configuration.
+ * Tracks Cloudinary storage location, encryption state, versioning, and DRM configuration.
  */
 @Entity('contents')
 @Index('idx_contents_organization', ['organizationId'])
@@ -78,11 +78,11 @@ export class Content {
   })
   status: ContentStatus;
 
-  /** S3 object key for the content file */
+  /** Cloudinary public_id for the content file */
   @Column({ name: 's3_key', type: 'varchar', length: 1024 })
   s3Key: string;
 
-  /** S3 bucket where the content is stored */
+  /** Storage provider identifier (always 'cloudinary') */
   @Column({ name: 's3_bucket', type: 'varchar', length: 255 })
   s3Bucket: string;
 

@@ -10,8 +10,9 @@ import {
   HttpCode,
   HttpStatus,
   Headers,
+  BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { AuthService } from './auth.service';
@@ -20,6 +21,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { User } from '../user/entities/user.entity';
@@ -40,6 +42,14 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'Login successful' })
+  @ApiHeader({
+    name: 'user-agent',
+    description: 'Client user agent identifier',
+    required: false,
+    schema: {
+      default: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+    },
+  })
   async login(
     @Body() dto: LoginDto,
     @Req() req: Request,
@@ -52,6 +62,14 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiHeader({
+    name: 'user-agent',
+    description: 'Client user agent identifier',
+    required: false,
+    schema: {
+      default: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+    },
+  })
   async refresh(
     @Body() dto: RefreshTokenDto,
     @Req() req: Request,
@@ -98,7 +116,11 @@ export class AuthController {
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify user email address using token' })
-  async verifyEmail(@Body() dto: { token: string }) {
+  @ApiResponse({ status: 200, description: 'Email successfully verified' })
+  async verifyEmail(@Body() dto: VerifyEmailDto) {
+    if (!dto || !dto.token) {
+      throw new BadRequestException('Verification token is required');
+    }
     await this.authService.verifyEmail(dto.token);
     return { message: 'Email verified successfully' };
   }

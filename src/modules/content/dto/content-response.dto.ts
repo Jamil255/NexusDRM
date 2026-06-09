@@ -12,7 +12,7 @@ export class ContentVersionResponseDto {
   @ApiProperty({ description: 'Version number' })
   versionNumber: number;
 
-  @ApiProperty({ description: 'S3 object key' })
+  @ApiProperty({ description: 'Cloudinary public_id' })
   s3Key: string;
 
   @ApiProperty({ description: 'File size in bytes' })

@@ -3,6 +3,7 @@ import { QueueService } from '@common/queue/queue.service';
 import { QUEUE_VIDEO_TRANSCODE, QUEUE_THUMBNAIL_GENERATE } from '@common/queue/queue.constants';
 import { ContentRepository } from '../content.repository';
 import { ContentStatus } from '../entities/content.entity';
+import { CloudinaryService } from '@common/cloudinary/cloudinary.service';
 
 @Injectable()
 export class VideoTranscodeProcessor implements OnModuleInit {
@@ -11,12 +12,13 @@ export class VideoTranscodeProcessor implements OnModuleInit {
   constructor(
     private readonly queueService: QueueService,
     private readonly contentRepository: ContentRepository,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async onModuleInit() {
     await this.queueService.subscribe(QUEUE_VIDEO_TRANSCODE, async (job) => {
       const { contentId, s3Key } = job.data;
-      this.logger.log(`Transcoding video content: ${contentId}`);
+      this.logger.log(`Processing video transcoding for content: ${contentId}`);
 
       try {
         const content = await this.contentRepository.base.findOne({ where: { id: contentId } });
@@ -25,19 +27,29 @@ export class VideoTranscodeProcessor implements OnModuleInit {
           return;
         }
 
-        // Mock FFmpeg transcoding execution block
-        // In production, you would run ffmpeg command-line tools to generate ABR HLS segments
-        this.logger.log(`Generating adaptive bitrate HLS streams for: ${s3Key}`);
-        
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // simulate transcoding duration
+        // Generate HLS streaming URL using Cloudinary's streaming profile
+        const hlsUrl = this.cloudinaryService.getHlsStreamingUrl(s3Key);
+        this.logger.log(`HLS adaptive bitrate stream generated: ${hlsUrl}`);
 
+        // Generate thumbnail using Cloudinary URL transformation (auto-frame for video)
+        const thumbnailUrl = this.cloudinaryService.generateThumbnailUrl(s3Key, 'video', 640, 360);
+        this.logger.log(`Video poster frame generated: ${thumbnailUrl}`);
+
+        // Update content metadata with transcoding results
+        content.metadata = {
+          ...content.metadata,
+          hlsUrl,
+          thumbnailUrl,
+          transcodedAt: new Date().toISOString(),
+          streamingProfile: 'hd',
+        };
         content.status = ContentStatus.PUBLISHED;
         content.publishedAt = new Date();
         await this.contentRepository.base.save(content);
 
         this.logger.log(`Video transcoding completed successfully for: ${contentId}`);
 
-        // Generate poster thumbnail
+        // Trigger thumbnail persistence job
         await this.queueService.publish(QUEUE_THUMBNAIL_GENERATE, { contentId, s3Key });
       } catch (error) {
         this.logger.error(`Video transcoding failed for: ${contentId}`, error.stack);

@@ -23,8 +23,8 @@ export class HealthController {
     return this.health.check([
       // Check database connection
       () => this.db.pingCheck('database', { timeout: 3000 }),
-      // Check storage system endpoint (mocking via http check on MinIO / S3)
-      () => this.http.pingCheck('s3-storage', 'http://localhost:9000/minio/health/live'),
+      // Check Cloudinary API endpoint
+      () => this.http.pingCheck('cloudinary', 'https://api.cloudinary.com/v1_1'),
     ]);
   }
 

@@ -1,6 +1,8 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { QueueService } from '@common/queue/queue.service';
 import { QUEUE_EMAIL_NOTIFICATION } from '@common/queue/queue.constants';
+import * as nodemailer from 'nodemailer';
 
 // Email templates
 import { getLicenseExpiryEmail } from '../templates/license-expiry.template';
@@ -10,8 +12,32 @@ import { getContentUpdateEmail } from '../templates/content-update.template';
 @Injectable()
 export class EmailNotificationProcessor implements OnModuleInit {
   private readonly logger = new Logger(EmailNotificationProcessor.name);
+  private transporter: nodemailer.Transporter;
 
-  constructor(private readonly queueService: QueueService) {}
+  constructor(
+    private readonly queueService: QueueService,
+    private readonly configService: ConfigService,
+  ) {
+    const host = this.configService.get<string>('SMTP_HOST', 'localhost');
+    const port = this.configService.get<number>('SMTP_PORT', 587);
+    const user = this.configService.get<string>('SMTP_USER');
+    const pass = this.configService.get<string>('SMTP_PASS');
+
+    const transportOptions: any = {
+      host,
+      port,
+      secure: port === 465, // true for 465, false for other ports
+    };
+
+    if (user && pass) {
+      transportOptions.auth = {
+        user,
+        pass,
+      };
+    }
+
+    this.transporter = nodemailer.createTransport(transportOptions);
+  }
 
   async onModuleInit() {
     await this.queueService.subscribe(QUEUE_EMAIL_NOTIFICATION, async (job) => {
@@ -35,10 +61,21 @@ export class EmailNotificationProcessor implements OnModuleInit {
         emailContent = getContentUpdateEmail(email, data.title, data.changeNote);
       }
 
-      // Mock SMTP send operation
-      this.logger.log(`[EMAIL SEND] Subject: "${emailContent.subject}"`);
-      this.logger.log(`[EMAIL SEND] Body:\n${emailContent.body}`);
-      this.logger.log(`Email sent successfully to: ${email}`);
+      const from = this.configService.get<string>('SMTP_FROM', 'noreply@drms.com');
+
+      try {
+        await this.transporter.sendMail({
+          from,
+          to: email,
+          subject: emailContent.subject,
+          html: emailContent.body,
+        });
+        this.logger.log(`Email sent successfully to: ${email}`);
+      } catch (error) {
+        this.logger.error(`Failed to send email to: ${email}`, error.stack);
+        throw error;
+      }
     });
   }
 }
+

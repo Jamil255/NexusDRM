@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UserService } from '@modules/user/user.service';
+import { RbacService } from '@modules/rbac/rbac.service';
 
 /**
  * JWT access-token payload shape.
@@ -24,6 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     private readonly configService: ConfigService,
     private readonly userService: UserService,
+    private readonly rbacService: RbacService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -48,18 +50,35 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const user = await this.userService.findById(payload.sub);
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException({
+        errorCode: 'AUTH_TOKEN_INVALID',
+        message: 'Authentication failed. User not found.',
+      });
     }
 
     if (user.status !== 'ACTIVE') {
-      throw new UnauthorizedException('User account is not active');
+      if (user.status === 'PENDING_VERIFICATION') {
+        throw new UnauthorizedException({
+          errorCode: 'AUTH_ACCOUNT_PENDING_VERIFICATION',
+          message: 'Your account is pending email verification. Please verify your email.',
+        });
+      }
+      throw new UnauthorizedException({
+        errorCode: 'AUTH_ACCOUNT_INACTIVE',
+        message: `Your account is currently ${user.status.toLowerCase()}.`,
+      });
     }
+
+    // Load user permissions and attach them to the request context
+    const permissions = await this.rbacService.getUserPermissions(user.id);
+    const permissionStrings = permissions.map(p => `${p.resource}:${p.action}`);
 
     return {
       id: user.id,
       email: user.email,
       organizationId: user.organizationId,
       status: user.status,
+      permissions: permissionStrings,
     };
   }
 }

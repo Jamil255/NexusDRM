@@ -18,8 +18,8 @@ export class DrmController {
   @Post('encrypt/:contentId')
   @Permissions('content:write')
   @ApiOperation({ summary: 'Encrypt content file at rest' })
-  async encrypt(@Param('contentId') contentId: string, @Body('s3Key') s3Key: string) {
-    const encryptedKey = await this.drmService.encryptContent(contentId, s3Key);
+  async encrypt(@Param('contentId') contentId: string, @Body('publicId') publicId: string) {
+    const encryptedKey = await this.drmService.encryptContent(contentId, publicId);
     return { success: true, encryptedKey };
   }
 

@@ -18,26 +18,31 @@ export class StreamingService {
     private readonly textService: TextContentService,
   ) {}
 
-  async getStreamConfig(contentId: string, userId: string, email: string, ipAddress?: string) {
-    // 1. Verify user has a valid active license for this content
-    await this.licenseService.validateLicense(contentId, userId);
-
-    // 2. Fetch content details
+  async getStreamConfig(contentId: string, user: any, ipAddress?: string) {
+    // 1. Fetch content details first
     const content = await this.contentService.findById(contentId);
+
+    // 2. Verify user has a valid active license for this content, unless they are the creator or an admin
+    const isCreator = content.createdBy === user.id;
+    const isAdmin = user.permissions?.includes('admin:access') || user.permissions?.includes('content:write');
+    
+    if (!isCreator && !isAdmin) {
+      await this.licenseService.validateLicense(contentId, user.id);
+    }
 
     // 3. Delegate to type-specific service
     switch (content.contentType) {
       case ContentType.VIDEO:
-        return this.videoService.getVideoPlayerConfig(contentId, userId, email, ipAddress);
+        return this.videoService.getVideoPlayerConfig(contentId, user.id, user.email, ipAddress);
       case ContentType.AUDIO:
-        const url = await this.audioService.getAudioStreamUrl(contentId, userId, ipAddress);
+        const url = await this.audioService.getAudioStreamUrl(contentId, user.id, ipAddress);
         return { streamUrl: url, contentType: 'audio/mpeg' };
       case ContentType.DOCUMENT:
-        return this.docService.getDocumentViewerConfig(contentId, userId, email, ipAddress);
+        return this.docService.getDocumentViewerConfig(contentId, content.s3Key, user.id, user.email, ipAddress);
       case ContentType.TEXT:
         // Text files are stored in S3, we fetch and protect them
         const text = `This is enterprise protected text content. Safe from print and copy. ID: ${contentId}`;
-        return this.textService.getProtectedText(contentId, text, userId, email);
+        return this.textService.getProtectedText(contentId, text, user.id, user.email);
       default:
         throw new ForbiddenException('Unsupported streaming content type');
     }

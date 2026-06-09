@@ -28,7 +28,7 @@ export class ContentVersion {
   @Column({ name: 'version_number', type: 'int' })
   versionNumber: number;
 
-  /** S3 object key for this version's file */
+  /** Cloudinary public_id for this version's file */
   @Column({ name: 's3_key', type: 'varchar', length: 1024 })
   s3Key: string;
 

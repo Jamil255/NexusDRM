@@ -1,11 +1,13 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import PgBoss = require('pg-boss');
+import * as queueConstants from './queue.constants';
 
 @Injectable()
 export class QueueService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(QueueService.name);
   private boss: PgBoss;
+  private initPromise?: Promise<void>;
 
   constructor(private readonly configService: ConfigService) {
     const dbHost = this.configService.get<string>('DB_HOST', 'localhost');
@@ -28,12 +30,25 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    try {
-      await this.boss.start();
-      this.logger.log('PgBoss queue service started successfully');
-    } catch (error) {
-      this.logger.error('Failed to start PgBoss queue service', error.stack);
+    if (!this.initPromise) {
+      this.initPromise = (async () => {
+        try {
+          await this.boss.start();
+          this.logger.log('PgBoss queue service started successfully');
+
+          // Pre-create all known queues sequentially to avoid concurrent DDL deadlocks in pg-boss
+          const queues = Object.values(queueConstants);
+          for (const queueName of queues) {
+            await this.boss.createQueue(queueName);
+            this.logger.log(`Queue "${queueName}" initialized successfully`);
+          }
+        } catch (error) {
+          this.logger.error('Failed to initialize PgBoss queues', error.stack);
+          throw error;
+        }
+      })();
     }
+    await this.initPromise;
   }
 
   async onModuleDestroy() {
@@ -45,8 +60,16 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private async ensureInitialized() {
+    if (!this.initPromise) {
+      await this.onModuleInit();
+    }
+    await this.initPromise;
+  }
+
   async publish(queueName: string, data: any, options: PgBoss.SendOptions = {}): Promise<string | null> {
     try {
+      await this.ensureInitialized();
       const jobId = await this.boss.send(queueName, data, options);
       this.logger.debug(`Published job ${jobId} to queue ${queueName}`);
       return jobId;
@@ -62,6 +85,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     options?: PgBoss.WorkOptions,
   ): Promise<string> {
     try {
+      await this.ensureInitialized();
       const workId = await this.boss.work(queueName, options || {}, async (job: any) => {
         try {
           const jobInstance = Array.isArray(job) ? job[0] : job;
@@ -82,7 +106,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
 
   async schedule(queueName: string, cronExpression: string, data: any): Promise<void> {
     try {
-      await this.boss.createQueue(queueName);
+      await this.ensureInitialized();
       await this.boss.schedule(queueName, cronExpression, data);
       this.logger.log(`Scheduled queue ${queueName} with cron ${cronExpression}`);
     } catch (error) {
@@ -90,3 +114,4 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
+

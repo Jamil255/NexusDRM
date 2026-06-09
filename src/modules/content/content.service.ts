@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { Repository, DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
 import { Content, ContentStatus, ContentType } from './entities/content.entity';
@@ -11,36 +10,41 @@ import { ContentRepository } from './content.repository';
 import { UploadContentDto } from './dto/upload-content.dto';
 import { UpdateContentDto } from './dto/update-content.dto';
 import { QueueService } from '@common/queue/queue.service';
+import { CloudinaryService } from '@common/cloudinary/cloudinary.service';
 import { QUEUE_CONTENT_UPLOAD, QUEUE_VIDEO_TRANSCODE } from '@common/queue/queue.constants';
 import { checksumSha256 } from '@common/utils/hash.util';
+import { Organization } from '@modules/organization/entities/organization.entity';
 
 @Injectable()
 export class ContentService {
   private readonly logger = new Logger(ContentService.name);
-  private s3Client: S3Client;
-  private rawBucket: string;
 
   constructor(
     private readonly contentRepository: ContentRepository,
     private readonly configService: ConfigService,
     private readonly queueService: QueueService,
+    private readonly cloudinaryService: CloudinaryService,
     @InjectRepository(Content)
     private readonly contentRepo: Repository<Content>,
     @InjectRepository(ContentVersion)
     private readonly versionRepo: Repository<ContentVersion>,
     @InjectRepository(ContentMetadata)
     private readonly metadataRepo: Repository<ContentMetadata>,
-  ) {
-    this.rawBucket = this.configService.get<string>('S3_BUCKET_RAW', 'drms-raw-content');
-    this.s3Client = new S3Client({
-      endpoint: this.configService.get<string>('S3_ENDPOINT', 'http://localhost:9000'),
-      credentials: {
-        accessKeyId: this.configService.get<string>('S3_ACCESS_KEY', 'minioadmin'),
-        secretAccessKey: this.configService.get<string>('S3_SECRET_KEY', 'minioadmin'),
-      },
-      region: this.configService.get<string>('S3_REGION', 'us-east-1'),
-      forcePathStyle: this.configService.get<boolean>('S3_FORCE_PATH_STYLE', true),
-    });
+    private readonly dataSource: DataSource,
+  ) {}
+
+  private getCloudinaryResourceType(contentType: ContentType): 'image' | 'video' | 'raw' {
+    switch (contentType) {
+      case ContentType.IMAGE:
+      case ContentType.DOCUMENT:
+      case ContentType.EBOOK:
+        return 'image';
+      case ContentType.VIDEO:
+      case ContentType.AUDIO:
+        return 'video';
+      default:
+        return 'raw';
+    }
   }
 
   async uploadContent(
@@ -50,33 +54,51 @@ export class ContentService {
     orgId: string,
   ): Promise<Content> {
     const checksum = checksumSha256(file.buffer);
-    const s3Key = `raw/${orgId}/${Date.now()}-${file.originalname}`;
+    
+    // Ensure orgId is present. If user is Super Admin (orgId is null), use or create a default organization.
+    let finalOrgId = orgId;
+    if (!finalOrgId || finalOrgId === 'null') {
+      const orgRepo = this.dataSource.getRepository(Organization);
+      let defaultOrg = await orgRepo.findOne({ where: {} });
+      if (!defaultOrg) {
+        defaultOrg = orgRepo.create({
+          name: 'Default System Organization',
+          slug: 'default-system-organization',
+          plan: 'enterprise',
+          settings: {},
+        });
+        defaultOrg = await orgRepo.save(defaultOrg);
+      }
+      finalOrgId = defaultOrg.id;
+    }
 
-    // Upload to S3
+    const folderPrefix = (dto.contentType === ContentType.DOCUMENT || dto.contentType === ContentType.EBOOK) ? 'docs' : 'raw';
+    let publicId = `${folderPrefix}/${finalOrgId}/${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, '')}`;
+    const resourceType = this.getCloudinaryResourceType(dto.contentType);
+
+    // Upload to Cloudinary
     try {
-      await this.s3Client.send(
-        new PutObjectCommand({
-          Bucket: this.rawBucket,
-          Key: s3Key,
-          Body: file.buffer,
-          ContentType: file.mimetype,
-        }),
+      const uploadResult = await this.cloudinaryService.uploadFile(
+        file.buffer,
+        `${folderPrefix}/${finalOrgId}`,
+        resourceType,
+        file.originalname,
       );
+      publicId = uploadResult.publicId;
     } catch (error) {
-      this.logger.error(`S3 Upload failed for key: ${s3Key}`, error.stack);
-      // Fallback/log warning for offline development
+      this.logger.error(`Cloudinary Upload failed for: ${file.originalname}`, error.stack);
     }
 
     // Create DB content
     const content = this.contentRepo.create({
-      organizationId: orgId,
+      organizationId: finalOrgId,
       createdBy: userId,
       title: dto.title,
       description: dto.description || null,
       contentType: dto.contentType,
       status: ContentStatus.PROCESSING,
-      s3Key,
-      s3Bucket: this.rawBucket,
+      s3Key: publicId,
+      s3Bucket: 'cloudinary',
       fileSize: file.size,
       mimeType: file.mimetype,
       checksumSha256: checksum,
@@ -90,7 +112,7 @@ export class ContentService {
     const version = this.versionRepo.create({
       contentId: savedContent.id,
       versionNumber: 1,
-      s3Key,
+      s3Key: publicId,
       fileSize: file.size,
       checksumSha256: checksum,
       changeNote: 'Initial Upload',
@@ -101,7 +123,7 @@ export class ContentService {
     // Dispatch PgBoss Job
     await this.queueService.publish(QUEUE_CONTENT_UPLOAD, {
       contentId: savedContent.id,
-      s3Key,
+      s3Key: publicId,
       contentType: dto.contentType,
     });
 
@@ -115,10 +137,13 @@ export class ContentService {
     filters?: { status?: ContentStatus; contentType?: ContentType; search?: string },
   ): Promise<{ items: Content[]; total: number }> {
     const qb = this.contentRepo.createQueryBuilder('content')
-      .where('content.organizationId = :orgId', { orgId })
       .orderBy('content.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
+
+    if (orgId && orgId !== 'null') {
+      qb.where('content.organizationId = :orgId', { orgId });
+    }
 
     if (filters?.status) {
       qb.andWhere('content.status = :status', { status: filters.status });
@@ -139,7 +164,7 @@ export class ContentService {
 
   async findById(id: string, orgId?: string): Promise<Content> {
     const where: any = { id };
-    if (orgId) {
+    if (orgId && orgId !== 'null') {
       where.organizationId = orgId;
     }
     const content = await this.contentRepo.findOne({
@@ -198,24 +223,26 @@ export class ContentService {
   ): Promise<ContentVersion> {
     const content = await this.findById(id, orgId);
     const checksum = checksumSha256(file.buffer);
-    const s3Key = `raw/${orgId}/${Date.now()}-${file.originalname}`;
+    const versionOrgId = content.organizationId || 'default-org-fallback';
+    const folderPrefix = (content.contentType === ContentType.DOCUMENT || content.contentType === ContentType.EBOOK) ? 'docs' : 'raw';
+    let publicId = `${folderPrefix}/${versionOrgId}/${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, '')}`;
+    const resourceType = this.getCloudinaryResourceType(content.contentType);
 
     try {
-      await this.s3Client.send(
-        new PutObjectCommand({
-          Bucket: this.rawBucket,
-          Key: s3Key,
-          Body: file.buffer,
-          ContentType: file.mimetype,
-        }),
+      const uploadResult = await this.cloudinaryService.uploadFile(
+        file.buffer,
+        `${folderPrefix}/${versionOrgId}`,
+        resourceType,
+        file.originalname,
       );
+      publicId = uploadResult.publicId;
     } catch (error) {
-      this.logger.error(`S3 Upload failed for key: ${s3Key}`, error.stack);
+      this.logger.error(`Cloudinary Upload failed for: ${file.originalname}`, error.stack);
     }
 
     const nextVer = content.currentVersion + 1;
     content.currentVersion = nextVer;
-    content.s3Key = s3Key;
+    content.s3Key = publicId;
     content.fileSize = file.size;
     content.mimeType = file.mimetype;
     content.checksumSha256 = checksum;
@@ -225,7 +252,7 @@ export class ContentService {
     const version = this.versionRepo.create({
       contentId: content.id,
       versionNumber: nextVer,
-      s3Key,
+      s3Key: publicId,
       fileSize: file.size,
       checksumSha256: checksum,
       changeNote: note || `Version ${nextVer}`,
@@ -236,7 +263,7 @@ export class ContentService {
 
     await this.queueService.publish(QUEUE_CONTENT_UPLOAD, {
       contentId: content.id,
-      s3Key,
+      s3Key: publicId,
       contentType: content.contentType,
     });
 

@@ -21,7 +21,7 @@ export class StreamingController {
     @Req() req: Request,
   ) {
     const ip = req.ip || req.socket.remoteAddress || '127.0.0.1';
-    return this.streamingService.getStreamConfig(id, user.id, user.email, ip);
+    return this.streamingService.getStreamConfig(id, user, ip);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -34,7 +34,7 @@ export class StreamingController {
     @Req() req: Request,
   ) {
     const ip = req.ip || req.socket.remoteAddress || '127.0.0.1';
-    return this.streamingService.getStreamConfig(id, user.id, user.email, ip);
+    return this.streamingService.getStreamConfig(id, user, ip);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -47,7 +47,7 @@ export class StreamingController {
     @Req() req: Request,
   ) {
     const ip = req.ip || req.socket.remoteAddress || '127.0.0.1';
-    return this.streamingService.getStreamConfig(id, user.id, user.email, ip);
+    return this.streamingService.getStreamConfig(id, user, ip);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -60,7 +60,7 @@ export class StreamingController {
     @Req() req: Request,
   ) {
     const ip = req.ip || req.socket.remoteAddress || '127.0.0.1';
-    return this.streamingService.getStreamConfig(id, user.id, user.email, ip);
+    return this.streamingService.getStreamConfig(id, user, ip);
   }
 
   @Get('video/:id/manifest')

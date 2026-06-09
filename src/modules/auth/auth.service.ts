@@ -83,11 +83,23 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user.status === 'PENDING_VERIFICATION') {
+      throw new ForbiddenException({
+        errorCode: 'AUTH_ACCOUNT_PENDING_VERIFICATION',
+        message: 'Your account is pending email verification. Please verify your email.',
+      });
+    }
     if (user.status === 'SUSPENDED') {
-      throw new ForbiddenException('Your account has been suspended');
+      throw new ForbiddenException({
+        errorCode: 'AUTH_ACCOUNT_SUSPENDED',
+        message: 'Your account has been suspended.',
+      });
     }
     if (user.status === 'DEACTIVATED') {
-      throw new ForbiddenException('Your account is deactivated');
+      throw new ForbiddenException({
+        errorCode: 'AUTH_ACCOUNT_DEACTIVATED',
+        message: 'Your account is deactivated.',
+      });
     }
 
     await this.validateConcurrentSessions(user.id, user.maxSessions);
@@ -275,7 +287,12 @@ export class AuthService {
   }
 
   private async generateTokenPair(user: User): Promise<{ accessToken: string; refreshToken: string }> {
-    const payload = { sub: user.id, email: user.email };
+    const payload = { 
+      sub: user.id, 
+      email: user.email,
+      organizationId: user.organizationId,
+      type: 'access'
+    };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = generateRandomToken(64);
     return { accessToken, refreshToken };
