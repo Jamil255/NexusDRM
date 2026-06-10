@@ -23,6 +23,14 @@ export class UserResponseDto {
   lastName: string;
 
   @Expose()
+  @ApiProperty()
+  role: string;
+
+  @Expose()
+  @ApiProperty()
+  permissions: string[];
+
+  @Expose()
   @ApiPropertyOptional()
   avatarUrl: string | null;
 

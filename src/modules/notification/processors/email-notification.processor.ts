@@ -8,11 +8,15 @@ import * as nodemailer from 'nodemailer';
 import { getLicenseExpiryEmail } from '../templates/license-expiry.template';
 import { getSecurityAlertEmail } from '../templates/security-alert.template';
 import { getContentUpdateEmail } from '../templates/content-update.template';
+import { getWelcomeEmail } from '../templates/welcome.template';
+
+import { getVerifyEmailTemplate } from '../templates/verify-email.template';
 
 @Injectable()
 export class EmailNotificationProcessor implements OnModuleInit {
   private readonly logger = new Logger(EmailNotificationProcessor.name);
   private transporter: nodemailer.Transporter;
+  private readonly frontendUrl: string;
 
   constructor(
     private readonly queueService: QueueService,
@@ -22,18 +26,16 @@ export class EmailNotificationProcessor implements OnModuleInit {
     const port = this.configService.get<number>('SMTP_PORT', 587);
     const user = this.configService.get<string>('SMTP_USER');
     const pass = this.configService.get<string>('SMTP_PASS');
+    this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
 
     const transportOptions: any = {
       host,
       port,
-      secure: port === 465, // true for 465, false for other ports
+      secure: port === 465,
     };
 
     if (user && pass) {
-      transportOptions.auth = {
-        user,
-        pass,
-      };
+      transportOptions.auth = { user, pass };
     }
 
     this.transporter = nodemailer.createTransport(transportOptions);
@@ -47,12 +49,11 @@ export class EmailNotificationProcessor implements OnModuleInit {
       let emailContent = { subject: 'DRMS Notification', body: '' };
 
       if (type === 'VERIFY_EMAIL') {
-        emailContent = {
-          subject: 'Verify your DRMS email address',
-          body: `<p>Please verify your email using this token: <strong>${token}</strong></p>`,
-        };
+        emailContent = getVerifyEmailTemplate(email, token, this.frontendUrl);
       } else if (type === 'PASSWORD_RESET') {
         emailContent = getSecurityAlertEmail(email, 'Password Reset Requested', 'N/A', `Token: ${token}`);
+      } else if (template === 'WELCOME') {
+        emailContent = getWelcomeEmail(email, data.firstName, data.password, data.roleName);
       } else if (template === 'LICENSE_EXPIRY') {
         emailContent = getLicenseExpiryEmail(email, data.licenseKey, new Date(data.expiryDate));
       } else if (template === 'SECURITY_ALERT') {

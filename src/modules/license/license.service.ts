@@ -55,16 +55,19 @@ export class LicenseService {
   }
 
   async findAll(
-    orgId: string,
+    orgId: string | null,
     page: number = 1,
     limit: number = 20,
     filters?: { userId?: string; contentId?: string; status?: LicenseStatus },
   ): Promise<{ items: License[]; total: number }> {
     const qb = this.licenseRepo.createQueryBuilder('license')
-      .where('license.organizationId = :orgId', { orgId })
       .orderBy('license.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
+
+    if (orgId) {
+      qb.andWhere('license.organizationId = :orgId', { orgId });
+    }
 
     if (filters?.userId) {
       qb.andWhere('license.userId = :userId', { userId: filters.userId });

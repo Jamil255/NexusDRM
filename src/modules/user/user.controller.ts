@@ -25,9 +25,15 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { plainToInstance } from 'class-transformer';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { QueueService } from '@common/queue/queue.service';
+import { QUEUE_EMAIL_NOTIFICATION } from '@common/queue/queue.constants';
+import { generateRandomToken } from '@common/utils/hash.util';
 import { UserService } from './user.service';
+import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -43,6 +49,9 @@ export class UserController {
   constructor(
     private readonly userService: UserService,
     private readonly rbacService: RbacService,
+    private readonly queueService: QueueService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   /**
@@ -54,16 +63,32 @@ export class UserController {
   @ApiResponse({ status: 201, description: 'User created successfully', type: UserResponseDto })
   async createUser(@Body() dto: CreateUserDto) {
     const user = await this.userService.create(dto);
+    let roleName: string | undefined;
     if (dto.roleId) {
       // Resolve role: if roleId is a name (e.g. 'org_admin'), look up the real UUID
       let resolvedRoleId = dto.roleId;
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dto.roleId);
       if (!isUuid) {
+        roleName = dto.roleId;
         const role = await this.rbacService.getRoleByName(dto.roleId);
         if (role) resolvedRoleId = role.id;
       }
       await this.rbacService.assignRoleToUser({ userId: user.id, roleId: resolvedRoleId }, dto.organizationId);
     }
+
+    // Generate verification token and send email (same flow as auth/register)
+    const verificationToken = generateRandomToken();
+    user.emailVerificationToken = verificationToken;
+    await this.userRepository.save(user);
+
+    // Queue verification email (fire-and-forget)
+    this.queueService.publish(QUEUE_EMAIL_NOTIFICATION, {
+      userId: user.id,
+      type: 'VERIFY_EMAIL',
+      token: verificationToken,
+      email: dto.email,
+    }).catch((err) => console.error('Failed to queue verification email:', err));
+
     return {
       success: true,
       data: plainToInstance(UserResponseDto, user),
@@ -99,9 +124,20 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Current user profile', type: UserResponseDto })
   async getMe(@CurrentUser() currentUser: any) {
     const user = await this.userService.findById(currentUser.id);
+    const userPermissions = await this.rbacService.getUserPermissions(currentUser.id);
+    const permissions = userPermissions.map(p => `${p.resource}:${p.action}`);
+    
+    // Get roles for string representation in UI
+    const roles = await this.rbacService.getUserRoles(currentUser.id);
+    const roleString = roles.length > 0 ? (await this.rbacService.getRole(roles[0].roleId)).name : 'user';
+
+    const dto = plainToInstance(UserResponseDto, user);
+    dto.role = roleString;
+    dto.permissions = permissions;
+
     return {
       success: true,
-      data: plainToInstance(UserResponseDto, user),
+      data: dto,
     };
   }
 
@@ -114,12 +150,22 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Profile updated', type: UserResponseDto })
   async updateMe(
     @CurrentUser() currentUser: any,
-    @Body() dto: UpdateUserDto,
+    @Body() dtoPayload: UpdateUserDto,
   ) {
-    const user = await this.userService.update(currentUser.id, dto);
+    const user = await this.userService.update(currentUser.id, dtoPayload);
+    const userPermissions = await this.rbacService.getUserPermissions(currentUser.id);
+    const permissions = userPermissions.map(p => `${p.resource}:${p.action}`);
+    
+    const roles = await this.rbacService.getUserRoles(currentUser.id);
+    const roleString = roles.length > 0 ? (await this.rbacService.getRole(roles[0].roleId)).name : 'user';
+
+    const dto = plainToInstance(UserResponseDto, user);
+    dto.role = roleString;
+    dto.permissions = permissions;
+
     return {
       success: true,
-      data: plainToInstance(UserResponseDto, user),
+      data: dto,
     };
   }
 

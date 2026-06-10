@@ -39,7 +39,7 @@ export const LicensesPage: React.FC = () => {
   const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [issueContentId, setIssueContentId] = useState('');
   const [issueUserId, setIssueUserId] = useState('');
-  const [issueType, setIssueType] = useState<'RENTAL' | 'PURCHASE' | 'SUBSCRIPTION'>('SUBSCRIPTION');
+  const [issueType, setIssueType] = useState<'rental' | 'perpetual' | 'subscription'>('subscription');
   const [maxDevices, setMaxDevices] = useState(3);
   const [maxStreams, setMaxStreams] = useState(1);
   const [expiresAt, setExpiresAt] = useState('');
@@ -125,7 +125,7 @@ export const LicensesPage: React.FC = () => {
     const payload = {
       contentId: issueContentId,
       userId: issueUserId,
-      organizationId: currentUser?.organizationId || 'org-123',
+      organizationId: currentUser?.organizationId || '00000000-0000-0000-0000-000000000000',
       licenseType: issueType,
       maxDevices,
       maxConcurrentStreams: maxStreams,
@@ -180,7 +180,7 @@ export const LicensesPage: React.FC = () => {
   const resetIssueForm = () => {
     setIssueContentId('');
     setIssueUserId('');
-    setIssueType('SUBSCRIPTION');
+    setIssueType('subscription');
     setMaxDevices(3);
     setMaxStreams(1);
     setExpiresAt('');
@@ -468,9 +468,9 @@ export const LicensesPage: React.FC = () => {
                 onChange={(e) => setIssueType(e.target.value as any)}
                 className="w-full px-3 py-2 glass-input text-xs text-dark-300 font-semibold cursor-pointer"
               >
-                <option value="SUBSCRIPTION">Subscription</option>
-                <option value="RENTAL">Rental Lease</option>
-                <option value="PURCHASE">One-off Purchase</option>
+                <option value="subscription">Subscription</option>
+                <option value="rental">Rental Lease</option>
+                <option value="perpetual">One-off Purchase</option>
               </select>
             </div>
 

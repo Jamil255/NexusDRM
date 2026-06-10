@@ -10,6 +10,7 @@ interface User {
   organizationId: string;
   isActive: boolean;
   avatarUrl?: string;
+  permissions?: string[];
 }
 
 interface AuthContextType {
@@ -20,6 +21,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updatedData: Partial<User>) => void;
+  hasPermission: (requiredPerms: string[]) => boolean;
+  getDefaultRoute: () => string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +31,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const hasPermission = (requiredPerms: string[]) => {
+    if (!user) return false;
+    const adminRoles = ['org_admin', 'admin', 'superadmin'];
+    if (adminRoles.includes(user.role)) return true;
+    if (requiredPerms.length === 0) return true;
+    if (!user.permissions) return false;
+    return requiredPerms.some((p) => user.permissions?.includes(p));
+  };
+
+  const getDefaultRoute = () => {
+    if (hasPermission(['admin:access'])) return '/dashboard';
+    if (hasPermission(['user:read', 'user:manage'])) return '/dashboard/users';
+    if (hasPermission(['content:read', 'content:write'])) return '/dashboard/content';
+    if (hasPermission(['license:read', 'license:manage'])) return '/dashboard/licenses';
+    if (hasPermission(['audit:read'])) return '/dashboard/audit';
+    return '/'; // Fallback if no permissions
+  };
 
   const fetchProfile = async () => {
     try {
@@ -109,12 +130,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(accessToken);
         setUser(loggedUser || null);
         
-        // Fetch fresh profile details if user payload not complete
-        if (!loggedUser) {
-          await fetchProfile();
-        } else {
-          setIsLoading(false);
-        }
+        // Always fetch fresh profile details to ensure we get roles and permissions
+        await fetchProfile();
       } else {
         throw new Error('Authentication failed');
       }
@@ -154,6 +171,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         updateProfile,
+        hasPermission,
+        getDefaultRoute,
       }}
     >
       {children}
