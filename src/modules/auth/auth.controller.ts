@@ -121,6 +121,7 @@ export class AuthController {
     if (!dto || !dto.token) {
       throw new BadRequestException('Verification token is required');
     }
+
     await this.authService.verifyEmail(dto.token);
     return { message: 'Email verified successfully' };
   }

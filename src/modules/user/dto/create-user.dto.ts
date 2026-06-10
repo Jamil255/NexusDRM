@@ -41,8 +41,8 @@ export class CreateUserDto {
   @IsUUID()
   organizationId?: string;
 
-  @ApiPropertyOptional({ description: 'Role UUID to assign the user' })
+  @ApiPropertyOptional({ description: 'Role UUID or role name (e.g. org_admin, manager, editor, viewer)' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   roleId?: string;
 }

@@ -34,7 +34,7 @@ export class LicenseController {
   @Permissions('license:manage')
   @ApiOperation({ summary: 'Issue a new license for a user' })
   async create(@Body() dto: CreateLicenseDto, @CurrentUser() user: any) {
-    return this.licenseService.createLicense(dto, user.organizationId);
+    return this.licenseService.createLicense(dto, user.organizationId || dto.organizationId);
   }
 
   @Get()

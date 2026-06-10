@@ -19,17 +19,17 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
-  const { logout, user } = useAuth();
+  const { logout, user, hasPermission } = useAuth();
 
   const navItems = [
-    { to: '/dashboard', label: 'Overview', icon: <LayoutDashboard size={18} /> },
-    { to: '/dashboard/users', label: 'User Control', icon: <Users size={18} /> },
-    { to: '/dashboard/content', label: 'Content Vault', icon: <Film size={18} /> },
-    { to: '/dashboard/licenses', label: 'Licenses', icon: <Key size={18} /> },
-    { to: '/dashboard/audit', label: 'Audit Trail', icon: <History size={18} /> },
-    { to: '/dashboard/revenue', label: 'Revenue/SaaS', icon: <TrendingUp size={18} /> },
-    { to: '/dashboard/system', label: 'System Health', icon: <Activity size={18} /> },
-  ];
+    { to: '/dashboard', label: 'Overview', icon: <LayoutDashboard size={18} />, requiredPerms: ['admin:access'] },
+    { to: '/dashboard/users', label: 'User Control', icon: <Users size={18} />, requiredPerms: ['user:read', 'user:manage'] },
+    { to: '/dashboard/content', label: 'Content Vault', icon: <Film size={18} />, requiredPerms: ['content:read', 'content:write'] },
+    { to: '/dashboard/licenses', label: 'Licenses', icon: <Key size={18} />, requiredPerms: ['license:read', 'license:manage'] },
+    { to: '/dashboard/audit', label: 'Audit Trail', icon: <History size={18} />, requiredPerms: ['audit:read'] },
+    { to: '/dashboard/revenue', label: 'Revenue/SaaS', icon: <TrendingUp size={18} />, requiredPerms: ['admin:access'] },
+    { to: '/dashboard/system', label: 'System Health', icon: <Activity size={18} />, requiredPerms: ['admin:access'] },
+  ].filter((item) => hasPermission(item.requiredPerms));
 
   return (
     <div className="w-64 h-screen bg-dark-950/90 border-r border-dark-800/80 flex flex-col fixed left-0 top-0 z-30">

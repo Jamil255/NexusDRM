@@ -6,6 +6,7 @@ import { Layout } from './components/Layout';
 // Pages
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { UsersPage } from './pages/UsersPage';
 import { ContentPage } from './pages/ContentPage';
@@ -25,6 +26,9 @@ function App() {
           {/* Admin Login */}
           <Route path="/login" element={<LoginPage />} />
 
+          {/* Email Verification */}
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+
           {/* Protected Console Control Dashboard routes */}
           <Route
             path="/dashboard"
@@ -35,25 +39,25 @@ function App() {
             }
           >
             {/* Overview / Analytics stats */}
-            <Route index element={<DashboardPage />} />
+            <Route index element={<ProtectedRoute requiredPerms={['admin:access']}><DashboardPage /></ProtectedRoute>} />
             
             {/* User Catalog */}
-            <Route path="users" element={<UsersPage />} />
+            <Route path="users" element={<ProtectedRoute requiredPerms={['user:read', 'user:manage']}><UsersPage /></ProtectedRoute>} />
 
             {/* Content Vault */}
-            <Route path="content" element={<ContentPage />} />
+            <Route path="content" element={<ProtectedRoute requiredPerms={['content:read', 'content:write']}><ContentPage /></ProtectedRoute>} />
 
             {/* License Authority */}
-            <Route path="licenses" element={<LicensesPage />} />
+            <Route path="licenses" element={<ProtectedRoute requiredPerms={['license:read', 'license:manage']}><LicensesPage /></ProtectedRoute>} />
 
             {/* Security Audit logs */}
-            <Route path="audit" element={<AuditPage />} />
+            <Route path="audit" element={<ProtectedRoute requiredPerms={['audit:read']}><AuditPage /></ProtectedRoute>} />
 
             {/* SaaS MRR Revenue analytics */}
-            <Route path="revenue" element={<RevenuePage />} />
+            <Route path="revenue" element={<ProtectedRoute requiredPerms={['admin:access']}><RevenuePage /></ProtectedRoute>} />
 
             {/* Container resource health metrics */}
-            <Route path="system" element={<SystemPage />} />
+            <Route path="system" element={<ProtectedRoute requiredPerms={['admin:access']}><SystemPage /></ProtectedRoute>} />
           </Route>
 
           {/* Catch-all redirect */}

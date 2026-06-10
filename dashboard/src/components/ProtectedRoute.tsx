@@ -4,11 +4,11 @@ import { useAuth } from '../context/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: string[];
+  requiredPerms?: string[];
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredPerms }) => {
+  const { isAuthenticated, isLoading, user, hasPermission, getDefaultRoute } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -27,8 +27,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+  if (requiredPerms && requiredPerms.length > 0 && !hasPermission(requiredPerms)) {
+    // If they can't access this route, send them to their default route
+    return <Navigate to={getDefaultRoute()} replace />;
   }
 
   return <>{children}</>;
